@@ -86,3 +86,10 @@ def dashboard():
     posts_data = [post.to_dict() for post in posts]
 
     return make_response({'message': 'Dashboard data fetched successfully', 'posts': posts_data}, 200)
+
+@app.route('/api/authors', methods=['GET'])
+def get_authors():
+    authors = User.query.filter_by(role='author').all()
+    authors_data = [author.to_dict() for author in authors]
+    return make_response({'message': 'Authors fetched successfully', 'authors': authors_data}, 200)
+
