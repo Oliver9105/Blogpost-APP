@@ -141,4 +141,58 @@ class UserById(Resource):
 
 api.add_resource(UserById, '/users/<int:id>')
 
+# CRUD operations for Post model using Flask-RESTful
+class PostResource(Resource):
+    def get(self):
+        return make_response([post.to_dict() for post in Post.query.all()], 200)
+
+    def post(self):
+        data = request.get_json()
+
+        # Add authorization check
+        user = User.query.get(data.get('user_id'))
+        if not user or user.role != 'author':
+            return make_response({'error': 'Unauthorized - Only authors can create posts'}, 403)
+
+        # Existing post creation logic
+        post = Post(
+            title=data['title'],
+            content=data['content'],
+            created_at=datetime.utcnow(),
+            user_id=data['user_id']
+        )
+        db.session.add(post)
+        db.session.commit()
+        return make_response(post.to_dict(), 201)
+
+api.add_resource(PostResource, '/posts')
+
+class PostById(Resource):
+    def get(self, id):
+        post = Post.query.get(id)
+        if post:
+            return make_response(post.to_dict(), 200)
+        return make_response({'error': 'Post not found'}, 404)
+    
+    def patch(self, id):
+        post = Post.query.get(id)
+        if post:
+            data = request.get_json()
+            if 'title' in data:
+                post.title = data['title']
+            if 'content' in data:
+                post.content = data['content']
+            db.session.commit()
+            return make_response(post.to_dict(), 200)
+        return make_response({'error': 'Post not found'}, 404)
+    
+    def delete(self, id):
+        post = Post.query.get(id)
+        if post:
+            db.session.delete(post)
+            db.session.commit()
+            return make_response({'message': 'Post deleted successfully'}, 200)
+        return make_response({'error': 'Post not found'}, 404)
+
+api.add_resource(PostById, '/posts/<int:id>')
 
