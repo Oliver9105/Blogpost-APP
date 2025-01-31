@@ -196,3 +196,18 @@ class PostById(Resource):
 
 api.add_resource(PostById, '/posts/<int:id>')
 
+# CRUD operations for Comment model using Flask-RESTful
+class CommentResource(Resource):
+    def get(self):
+        return make_response([comment.to_dict() for comment in Comment.query.all()], 200)
+
+    def post(self):
+        data = request.get_json()
+        comment = Comment(content=data['content'], created_at=datetime.utcnow(), user_id=data['user_id'], post_id=data['post_id'])
+        db.session.add(comment)
+        db.session.commit()
+        return make_response(comment.to_dict(), 201)
+
+api.add_resource(CommentResource, '/comments')
+
+
