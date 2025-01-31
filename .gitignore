@@ -1,0 +1,44 @@
+# Flask project .gitignore
+
+# Python files
+*.pyc
+*.pyo
+__pycache__/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Test related files
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE specific files
+.vscode/
+.idea/
+
+# Local configuration files
+.env
+instance/config.py 
+
+# Database files
+*.sqlite
+*.db 
+
+# Logs
+*.log
+
+# IDE specific files
+.vscode/
+.idea/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
