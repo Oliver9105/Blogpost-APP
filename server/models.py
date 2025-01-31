@@ -40,5 +40,26 @@ class User(db.Model, SerializerMixin):
         """Verify the provided password against the stored hash."""
         return check_password_hash(self.password_hash, password)
 
+class Post(db.Model, SerializerMixin):
+    __tablename__ = 'posts'
+
+    # Break circular references
+    serialize_rules = ('-user.posts', '-comments.post', '-comments.user.posts')
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+
+    # Relationships
+    user = db.relationship('User', back_populates='posts')
+    comments = db.relationship('Comment', back_populates='post', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<Post {self.id} - {self.title}>'
+
+
     
     
