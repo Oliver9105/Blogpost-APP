@@ -1,19 +1,30 @@
-from flask import Flask, make_response, request
+from flask import Flask, make_response, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_restful import Api, Resource
 from datetime import datetime
-from werkzeug.security import generate_password_hash, check_password_hash  # Add password hashing
+from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, User, Post, Comment
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog_platform.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+CORS(app)
 db.init_app(app)
 migrate = Migrate(app, db)
-
 api = Api(app)
+
+# Helper function to validate required fields
+def validate_required_fields(data, required_fields):
+    if not data or not all(key in data for key in required_fields):
+        return make_response({'error': f'Missing required fields: {required_fields}'}, 400)
+    return None
+
+# Helper function to check if a post already exists
+def post_exists(title, content, user_id):
+    return Post.query.filter_by(title=title, content=content, user_id=user_id).first()
 
 class Home(Resource):
     def get(self):
@@ -23,68 +34,52 @@ api.add_resource(Home, '/')
 
 @app.route('/api/register', methods=['POST'])
 def register():
-    # Get data from the request
     data = request.get_json()
+    required_fields = ['username', 'email', 'password', 'role']
+    validation_error = validate_required_fields(data, required_fields)
+    if validation_error:
+        return validation_error
 
-    # Validate required fields
-    if not data or not all(key in data for key in ['username', 'email', 'password', 'role']):
-        return make_response({'error': 'Missing required fields'}, 400)
-
-    # Check if the email is already registered
     if User.query.filter_by(email=data['email']).first():
         return make_response({'error': 'Email already registered'}, 400)
 
-    # Create a new user
     user = User(
         username=data['username'],
         email=data['email'],
         role=data['role'],
         created_at=datetime.utcnow()
     )
-
-    # Hash the password
     user.set_password(data['password'])
-
-    # Save the user to the database
     db.session.add(user)
     db.session.commit()
 
-    # Return a success response
     return make_response({'message': 'User registered successfully', 'user': user.to_dict()}, 201)
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    # Get data from the request
     data = request.get_json()
+    required_fields = ['email', 'password']
+    validation_error = validate_required_fields(data, required_fields)
+    if validation_error:
+        return validation_error
 
-    # Validate required fields
-    if not data or not all(key in data for key in ['email', 'password']):
-        return make_response({'error': 'Missing email or password'}, 400)
-
-    # Find the user by email
     user = User.query.filter_by(email=data['email']).first()
     if not user:
         return make_response({'error': 'User not found'}, 404)
 
-    # Verify the password
     if not user.check_password(data['password']):
         return make_response({'error': 'Invalid password'}, 401)
 
-    # Return a success response (you can include a token or user data here)
     return make_response({'message': 'Login successful', 'user': user.to_dict()}, 200)
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
-  
     return make_response({'message': 'Logout successful'}, 200)
 
 @app.route('/api/dashboard', methods=['GET'])
 def dashboard():
-    # Example: Fetch posts for the logged-in user
-    # You can customize this based on your application's requirements
-    posts = Post.query.all()  # Fetch all posts (or filter by user_id if needed)
+    posts = Post.query.all()
     posts_data = [post.to_dict() for post in posts]
-
     return make_response({'message': 'Dashboard data fetched successfully', 'posts': posts_data}, 200)
 
 @app.route('/api/authors', methods=['GET'])
@@ -100,8 +95,13 @@ class UserResource(Resource):
     
     def post(self):
         data = request.get_json()
+        required_fields = ['username', 'email', 'password', 'role']
+        validation_error = validate_required_fields(data, required_fields)
+        if validation_error:
+            return validation_error
+
         user = User(username=data['username'], email=data['email'], role=data['role'])
-        user.set_password(data['password'])  # Hash the password
+        user.set_password(data['password'])
         db.session.add(user)
         db.session.commit()
         return make_response(user.to_dict(), 201)
@@ -124,7 +124,7 @@ class UserById(Resource):
             if 'email' in data:
                 user.email = data['email']
             if 'password' in data:
-                user.set_password(data['password'])  # Hash the new password
+                user.set_password(data['password'])
             if 'role' in data:
                 user.role = data['role']
             db.session.commit()
@@ -148,13 +148,19 @@ class PostResource(Resource):
 
     def post(self):
         data = request.get_json()
+        required_fields = ['title', 'content', 'user_id']
+        validation_error = validate_required_fields(data, required_fields)
+        if validation_error:
+            return validation_error
 
-        # Add authorization check
-        user = User.query.get(data.get('user_id'))
+        user = User.query.get(data['user_id'])
         if not user or user.role != 'author':
             return make_response({'error': 'Unauthorized - Only authors can create posts'}, 403)
 
-        # Existing post creation logic
+        # Check if the post already exists
+        if post_exists(data['title'], data['content'], data['user_id']):
+            return make_response({'error': 'Post already exists'}, 400)
+
         post = Post(
             title=data['title'],
             content=data['content'],
@@ -163,7 +169,7 @@ class PostResource(Resource):
         )
         db.session.add(post)
         db.session.commit()
-        return make_response(post.to_dict(), 201)
+        return make_response({'message': 'Post created successfully', 'post': post.to_dict()}, 201)
 
 api.add_resource(PostResource, '/posts')
 
@@ -203,10 +209,20 @@ class CommentResource(Resource):
 
     def post(self):
         data = request.get_json()
-        comment = Comment(content=data['content'], created_at=datetime.utcnow(), user_id=data['user_id'], post_id=data['post_id'])
+        required_fields = ['content', 'user_id', 'post_id']
+        validation_error = validate_required_fields(data, required_fields)
+        if validation_error:
+            return validation_error
+
+        comment = Comment(
+            content=data['content'],
+            created_at=datetime.utcnow(),
+            user_id=data['user_id'],
+            post_id=data['post_id']
+        )
         db.session.add(comment)
         db.session.commit()
-        return make_response(comment.to_dict(), 201)
+        return make_response({'message': 'Comment created successfully', 'comment': comment.to_dict()}, 201)
 
 api.add_resource(CommentResource, '/comments')
 
@@ -216,6 +232,3 @@ def not_found(error):
 
 if __name__ == '__main__':
     app.run(debug=True, port=5555)
-
-
-
