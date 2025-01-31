@@ -18,12 +18,12 @@ class User(db.Model, SerializerMixin):
 
     created_at = db.Column(db.DateTime, nullable=False)
 
+    
+
     # Relationships
     posts = db.relationship('Post', back_populates='user', cascade='all, delete-orphan')
     comments = db.relationship('Comment', back_populates='user', cascade='all, delete-orphan')
 
-    def __repr__(self):
-        return f'<User {self.id} - {self.username}>'
 
     @validates('email')
     def validate_email(self, key, email):
@@ -39,6 +39,10 @@ class User(db.Model, SerializerMixin):
     def check_password(self, password):
         """Verify the provided password against the stored hash."""
         return check_password_hash(self.password_hash, password)
+
+    
+    def __repr__(self):
+        return f'<User {self.id} - {self.username}>'
 
 class Post(db.Model, SerializerMixin):
     __tablename__ = 'posts'
