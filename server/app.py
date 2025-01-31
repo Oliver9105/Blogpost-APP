@@ -52,3 +52,25 @@ def register():
     # Return a success response
     return make_response({'message': 'User registered successfully', 'user': user.to_dict()}, 201)
 
+@app.route('/api/login', methods=['POST'])
+def login():
+    # Get data from the request
+    data = request.get_json()
+
+    # Validate required fields
+    if not data or not all(key in data for key in ['email', 'password']):
+        return make_response({'error': 'Missing email or password'}, 400)
+
+    # Find the user by email
+    user = User.query.filter_by(email=data['email']).first()
+    if not user:
+        return make_response({'error': 'User not found'}, 404)
+
+    # Verify the password
+    if not user.check_password(data['password']):
+        return make_response({'error': 'Invalid password'}, 401)
+
+    # Return a success response (you can include a token or user data here)
+    return make_response({'message': 'Login successful', 'user': user.to_dict()}, 200)
+
+
