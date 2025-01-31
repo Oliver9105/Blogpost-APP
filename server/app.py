@@ -78,3 +78,11 @@ def logout():
   
     return make_response({'message': 'Logout successful'}, 200)
 
+@app.route('/api/dashboard', methods=['GET'])
+def dashboard():
+    # Example: Fetch posts for the logged-in user
+    # You can customize this based on your application's requirements
+    posts = Post.query.all()  # Fetch all posts (or filter by user_id if needed)
+    posts_data = [post.to_dict() for post in posts]
+
+    return make_response({'message': 'Dashboard data fetched successfully', 'posts': posts_data}, 200)
