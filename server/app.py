@@ -14,3 +14,9 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 api = Api(app)
+
+class Home(Resource):
+    def get(self):
+        return {'message': 'Welcome to the Blog Platform'}
+
+api.add_resource(Home, '/')
