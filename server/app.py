@@ -93,3 +93,52 @@ def get_authors():
     authors_data = [author.to_dict() for author in authors]
     return make_response({'message': 'Authors fetched successfully', 'authors': authors_data}, 200)
 
+# CRUD operations for User model using Flask-RESTful
+class UserResource(Resource):
+    def get(self):
+        return make_response([user.to_dict() for user in User.query.all()], 200)
+    
+    def post(self):
+        data = request.get_json()
+        user = User(username=data['username'], email=data['email'], role=data['role'])
+        user.set_password(data['password'])  # Hash the password
+        db.session.add(user)
+        db.session.commit()
+        return make_response(user.to_dict(), 201)
+
+api.add_resource(UserResource, '/users')
+
+class UserById(Resource):
+    def get(self, id):
+        user = User.query.get(id)
+        if user:
+            return make_response(user.to_dict(), 200)
+        return make_response({'error': 'User not found'}, 404)
+    
+    def patch(self, id):
+        user = User.query.get(id)
+        if user:
+            data = request.get_json()
+            if 'username' in data:
+                user.username = data['username']
+            if 'email' in data:
+                user.email = data['email']
+            if 'password' in data:
+                user.set_password(data['password'])  # Hash the new password
+            if 'role' in data:
+                user.role = data['role']
+            db.session.commit()
+            return make_response(user.to_dict(), 200)
+        return make_response({'error': 'User not found'}, 404)
+    
+    def delete(self, id):
+        user = User.query.get(id)
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+            return make_response({'message': 'User deleted successfully'}, 200)
+        return make_response({'error': 'User not found'}, 404)
+
+api.add_resource(UserById, '/users/<int:id>')
+
+
