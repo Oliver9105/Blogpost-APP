@@ -73,4 +73,8 @@ def login():
     # Return a success response (you can include a token or user data here)
     return make_response({'message': 'Login successful', 'user': user.to_dict()}, 200)
 
+@app.route('/api/logout', methods=['POST'])
+def logout():
+  
+    return make_response({'message': 'Logout successful'}, 200)
 
