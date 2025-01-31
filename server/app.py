@@ -210,4 +210,9 @@ class CommentResource(Resource):
 
 api.add_resource(CommentResource, '/comments')
 
+@app.errorhandler(404)
+def not_found(error):
+    return make_response({'error': 'Not found'}, 404)
+
+
 
