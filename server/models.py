@@ -32,4 +32,13 @@ class User(db.Model, SerializerMixin):
         return     
    
      
+    def set_password(self, password):
+        """Hash the password and store it in the password_hash field."""
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        """Verify the provided password against the stored hash."""
+        return check_password_hash(self.password_hash, password)
+
+    
     
