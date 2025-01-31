@@ -214,5 +214,8 @@ api.add_resource(CommentResource, '/comments')
 def not_found(error):
     return make_response({'error': 'Not found'}, 404)
 
+if __name__ == '__main__':
+    app.run(debug=True, port=555
+
 
 
