@@ -1,12 +1,13 @@
 from faker import Faker
-from models import db, User, Post, Comment  
+from models import db, User, Post, Comment
 from app import app
 from datetime import datetime
+from werkzeug.security import generate_password_hash  # To hash passwords
 
 fake = Faker()
 
 with app.app_context():
-    # delete all data from tables
+    # Clear all data from tables to ensure a fresh seed
     db.session.query(Comment).delete()
     db.session.query(Post).delete()
     db.session.query(User).delete()
@@ -18,8 +19,7 @@ with app.app_context():
             username=fake.user_name(),
             email=fake.unique.email(),
             role=fake.random_element(elements=('user', 'author')),
-            password_hash=fake.password(),
-            created_at=fake.date_this_year()
+            created_at=fake.date_this_year()  
         )
         db.session.add(user)
 
@@ -30,9 +30,8 @@ with app.app_context():
         post = Post(
             title=fake.sentence(),
             content=fake.text(),
-            user_id=fake.random_int(1, 10),  # Assigning a random user as the author
-            status=fake.random_element(elements=('published', 'draft')),
-            created_at=fake.date_this_year()
+            user_id=fake.random_int(1, 10), 
+            created_at=fake.date_this_year()  
         )
         db.session.add(post)
 
@@ -43,8 +42,8 @@ with app.app_context():
         comment = Comment(
             content=fake.text(),
             user_id=fake.random_int(1, 10),  
-            post_id=fake.random_int(1, 20),  
-            created_at=fake.date_this_year()
+            post_id=fake.random_int(1, 20), 
+            created_at=fake.date_this_year() 
         )
         db.session.add(comment)
 
