@@ -1,7 +1,6 @@
 from faker import Faker
 from models import db, User, Post, Comment
 from app import app
-from datetime import datetime
 from werkzeug.security import generate_password_hash  # To hash passwords
 
 fake = Faker()
@@ -15,10 +14,13 @@ with app.app_context():
 
     # Seed users
     for _ in range(10):
+        password = fake.password()  # Generate a fake password
+        hashed_password = generate_password_hash(password)  # Hash the password
+        
         user = User(
             username=fake.user_name(),
             email=fake.unique.email(),
-            role=fake.random_element(elements=('user', 'author')),
+            password_hash=hashed_password,  # Use the hashed password
             created_at=fake.date_this_year()  
         )
         db.session.add(user)
