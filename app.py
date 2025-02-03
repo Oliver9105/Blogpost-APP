@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
@@ -22,17 +22,17 @@ CORS(app)
 # Welcome route
 @app.route('/')
 def welcome():
-    return jsonify({"message": "Welcome to Bloppost App!"}), 200
+    return {"message": "Welcome to Bloppost App!"}, 200
 
 # User Resource
 class UserResource(Resource):
     def get(self, user_id=None):
         if user_id:
             user = User.query.get_or_404(user_id)
-            return jsonify(user.to_dict())
+            return user.to_dict(), 200
         else:
             users = User.query.all()
-            return jsonify([user.to_dict() for user in users])
+            return [user.to_dict() for user in users], 200
 
     def post(self):
         data = request.get_json()
@@ -41,14 +41,14 @@ class UserResource(Resource):
         password = data.get('password')
 
         if not username or not email or not password:
-            return jsonify({"error": "Missing required fields"}), 400
+            return {"error": "Missing required fields"}, 400
 
         new_user = User(username=username, email=email)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
 
-        return jsonify(new_user.to_dict()), 201
+        return new_user.to_dict(), 201
 
     def patch(self, user_id):
         user = User.query.get_or_404(user_id)
@@ -62,23 +62,23 @@ class UserResource(Resource):
             user.set_password(data['password'])
 
         db.session.commit()
-        return jsonify(user.to_dict()), 200
+        return user.to_dict(), 200
 
     def delete(self, user_id):
         user = User.query.get_or_404(user_id)
         db.session.delete(user)
         db.session.commit()
-        return jsonify({"message": "User deleted successfully"}), 200
+        return {"message": "User deleted successfully"}, 200
 
 # Post Resource
 class PostResource(Resource):
     def get(self, post_id=None):
         if post_id:
             post = Post.query.get_or_404(post_id)
-            return jsonify(post.to_dict())
+            return post.to_dict(), 200
         else:
             posts = Post.query.all()
-            return jsonify([post.to_dict() for post in posts])
+            return [post.to_dict() for post in posts], 200
 
     def post(self):
         data = request.get_json()
@@ -87,13 +87,13 @@ class PostResource(Resource):
         user_id = data.get('user_id')
 
         if not title or not content or not user_id:
-            return jsonify({"error": "Missing required fields"}), 400
+            return {"error": "Missing required fields"}, 400
 
         new_post = Post(title=title, content=content, user_id=user_id)
         db.session.add(new_post)
         db.session.commit()
 
-        return jsonify(new_post.to_dict()), 201
+        return new_post.to_dict(), 201
 
     def patch(self, post_id):
         post = Post.query.get_or_404(post_id)
@@ -105,17 +105,17 @@ class PostResource(Resource):
             post.content = data['content']
         if 'user_id' in data:
             if data['user_id'] is None:
-                return jsonify({"error": "user_id cannot be null"}), 400
+                return {"error": "user_id cannot be null"}, 400
             post.user_id = data['user_id']
 
         db.session.commit()
-        return jsonify(post.to_dict()), 200
+        return post.to_dict(), 200
 
     def delete(self, post_id):
         post = Post.query.get_or_404(post_id)
         db.session.delete(post)
         db.session.commit()
-        return jsonify({"message": "Post deleted successfully"}), 200
+        return {"message": "Post deleted successfully"}, 200
 
 # Comment Resource
 class CommentResource(Resource):
@@ -123,10 +123,10 @@ class CommentResource(Resource):
         if post_id:
             post = Post.query.get_or_404(post_id)
             comments = Comment.query.filter_by(post_id=post.id).all()
-            return jsonify([comment.to_dict() for comment in comments])
+            return [comment.to_dict() for comment in comments], 200
         else:
             comments = Comment.query.all()
-            return jsonify([comment.to_dict() for comment in comments])
+            return [comment.to_dict() for comment in comments], 200
 
     def post(self, post_id):
         data = request.get_json()
@@ -134,13 +134,13 @@ class CommentResource(Resource):
         user_id = data.get('user_id')
 
         if not content or not user_id:
-            return jsonify({"error": "Missing required fields"}), 400
+            return {"error": "Missing required fields"}, 400
 
         new_comment = Comment(content=content, user_id=user_id, post_id=post_id)
         db.session.add(new_comment)
         db.session.commit()
 
-        return jsonify(new_comment.to_dict()), 201
+        return new_comment.to_dict(), 201
 
 # Adding resources to the API
 api.add_resource(UserResource, '/users', '/users/<int:user_id>')
