@@ -8,7 +8,7 @@ db = SQLAlchemy()
 class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
 
-    serialize_rules = ('-posts.user', '-comments.user', '-comments.post.user')
+    serialize_rules = ('-posts', '-comments', '-posts.user', '-comments.user')
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), nullable=False)
@@ -26,19 +26,15 @@ class User(db.Model, SerializerMixin):
         return email
 
     def set_password(self, password):
-        """Hash the password and store it in the password_hash field."""
         self.validate_password_complexity(password)
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        """Verify the provided password against the stored hash."""
         return check_password_hash(self.password_hash, password)
 
     def validate_password_complexity(self, password):
-        """Ensure the password meets complexity requirements."""
         if len(password) < 8:
             raise ValueError('Password must be at least 8 characters long')
-        # Add more complexity rules as needed
 
     def __repr__(self):
         return f'<User {self.id} - {self.username}>'
@@ -46,7 +42,7 @@ class User(db.Model, SerializerMixin):
 class Post(db.Model, SerializerMixin):
     __tablename__ = 'posts'
 
-    serialize_rules = ('-user.posts', '-comments.post', '-comments.user.posts')
+    serialize_rules = ('-user', '-comments', '-comments.post')
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
@@ -63,7 +59,7 @@ class Post(db.Model, SerializerMixin):
 class Comment(db.Model, SerializerMixin):
     __tablename__ = 'comments'
 
-    serialize_rules = ('-user.comments', '-post.comments', '-post.user.comments')
+    serialize_rules = ('-user', '-post')
 
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
