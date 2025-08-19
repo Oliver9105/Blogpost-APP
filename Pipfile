@@ -5,15 +5,17 @@ name = "pypi"
 
 [packages]
 faker = "*"
+flask = "*"
 flask-cors = "*"
 flask-sqlalchemy = "*"
 flask-migrate = "*"
-sqlalchemy-serializer = "*"
 flask-restful = "*"
-flask = "*"
+sqlalchemy-serializer = "*"
 gunicorn = "*"
 psycopg2-binary = "*"
 setuptools = "*"
+
+[dev-packages]
 
 [requires]
 python_version = "3.8"
