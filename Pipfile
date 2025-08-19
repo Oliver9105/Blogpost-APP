@@ -13,8 +13,6 @@ flask-restful = "*"
 flask = "*"
 gunicorn = "*"
 psycopg2-binary = "*"
-
-[dev-packages]
 setuptools = "*"
 
 [requires]
