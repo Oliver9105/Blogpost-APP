@@ -11,7 +11,7 @@ flask-sqlalchemy = "*"
 flask-migrate = "*"
 flask-restful = "*"
 sqlalchemy-serializer = "*"
-setuptools = "*"
+setuptools = "42"
 gunicorn = "*"
 psycopg2-binary = "*"
 
