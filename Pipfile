@@ -11,11 +11,11 @@ flask-sqlalchemy = "*"
 flask-migrate = "*"
 flask-restful = "*"
 sqlalchemy-serializer = "*"
+setuptools = "*"
 gunicorn = "*"
 psycopg2-binary = "*"
-setuptools = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.8"
+python_version = "3.11"
