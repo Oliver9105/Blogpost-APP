@@ -2,8 +2,10 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
+from passlib.context import CryptContext
 
 db = SQLAlchemy()
+pwd_context = CryptContext(schemes=["scrypt"], deprecated="auto")   
 
 # Association table for Post <-> Tag
 post_tags = db.Table(
@@ -24,32 +26,24 @@ class User(db.Model):
     posts = db.relationship('Post', back_populates='user', cascade='all, delete-orphan')
 
     comments = db.relationship('Comment', back_populates='user', cascade='all, delete-orphan')
-
-    @validates('email')
-    def validate_email(self, key, email):
-        if '@' not in email:
-            raise ValueError('Invalid email address')
-        return email
-
+    
     def set_password(self, password):
-        if len(password) < 8:
-            raise ValueError('Password must be at least 8 characters long')
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = pwd_context.hash(password)
 
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-    
+        return pwd_context.verify(password, self.password_hash)
+
+
     def to_dict(self):
-            return {
-                "id": self.id,
-                "username": self.username,
-                "email": self.email,
-                "created_at": self.created_at.isoformat()
-    }
-
-
+        return {
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "created_at": self.created_at.isoformat()
+        }
+        
     def __repr__(self):
-        return f"<User {self.id} - {self.username}>"
+        return f"<User {self.id} - {self.username} - {self.email}>"
 
 class Category(db.Model):
     __tablename__ = 'categories'

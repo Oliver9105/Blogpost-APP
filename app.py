@@ -23,6 +23,61 @@ CORS(app)
 def welcome():
     return {"message": "Welcome to Blogpost App!"}, 200
 
+# Add authentication routes
+@app.route('/auth/login', methods=['POST'])
+def login():
+    if request.method == 'OPTIONS':
+        return '', 200
+    
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not email or not password:
+        return jsonify({"error": "Email and password required"}), 400
+    
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({"error": "Invalid email or password"}), 401
+    
+    if not user.check_password(password):
+        return jsonify({"error": "Invalid email or password"}), 401
+    
+    return jsonify({
+        "message": "Login successful",
+        "user": user.to_dict(),
+        "token": "demo_token_123"
+    }), 200
+    
+@app.route('/auth/register', methods=['POST', 'OPTIONS'])
+def register():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        return '', 200
+    
+    data = request.get_json()
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not username or not email or not password:
+        return jsonify({"error": "Username, email and password required"}), 400
+    
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "Email already registered"}), 409
+    
+    new_user = User(username=username, email=email)
+    new_user.set_password(password)  # Assuming you have a set_password method
+    db.session.add(new_user)
+    db.session.commit()
+    
+    return jsonify({
+        "message": "User created successfully",
+        "user": new_user.to_dict()
+    }), 201
+    
+    
 class UserResource(Resource):
     def get(self, user_id=None):
         if user_id:
