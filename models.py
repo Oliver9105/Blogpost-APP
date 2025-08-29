@@ -2,7 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
-from passlib.context import CryptContext
+
 
 db = SQLAlchemy()
 pwd_context = CryptContext(schemes=["scrypt"], deprecated="auto")   
@@ -28,10 +28,12 @@ class User(db.Model):
     comments = db.relationship('Comment', back_populates='user', cascade='all, delete-orphan')
     
     def set_password(self, password):
-        self.password_hash = pwd_context.hash(password)
+    if len(password) < 8:
+        raise ValueError('Password must be at least 8 characters long')
+    self.password_hash = generate_password_hash(password)
 
-    def check_password(self, password):
-        return pwd_context.verify(password, self.password_hash)
+def check_password(self, password):
+    return check_password_hash(self.password_hash, password)
 
 
     def to_dict(self):
