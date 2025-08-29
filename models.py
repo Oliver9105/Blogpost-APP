@@ -4,8 +4,7 @@ from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
-db = SQLAlchemy()
-pwd_context = CryptContext(schemes=["scrypt"], deprecated="auto")   
+db = SQLAlchemy() 
 
 # Association table for Post <-> Tag
 post_tags = db.Table(
@@ -24,18 +23,22 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
     posts = db.relationship('Post', back_populates='user', cascade='all, delete-orphan')
-
     comments = db.relationship('Comment', back_populates='user', cascade='all, delete-orphan')
-    
+
+    @validates('email')
+    def validate_email(self, key, email):
+        if '@' not in email:
+            raise ValueError('Invalid email address')
+        return email
+
     def set_password(self, password):
-    if len(password) < 8:
-        raise ValueError('Password must be at least 8 characters long')
-    self.password_hash = generate_password_hash(password)
+        if len(password) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        self.password_hash = generate_password_hash(password)
 
-def check_password(self, password):
-    return check_password_hash(self.password_hash, password)
-
-
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
     def to_dict(self):
         return {
             "id": self.id,
