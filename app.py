@@ -30,24 +30,31 @@ def login():
         return '', 200
     
     data = request.get_json()
-    email = data.get('email')
+    login_identifier = data.get('identifier')  # Unified field name
     password = data.get('password')
     
-    if not email or not password:
-        return jsonify({"error": "Email and password required"}), 400
+    if not login_identifier or not password:
+        return jsonify({"error": "Email/username and password required"}), 400
     
-    user = User.query.filter_by(email=email).first()
+    # Find user by email OR username
+    user = User.query.filter(
+        (User.email == login_identifier) | (User.username == login_identifier)
+    ).first()
     
     if not user:
-        return jsonify({"error": "Invalid email or password"}), 401
+        return jsonify({"error": "Invalid email/username or password"}), 401
     
-    if not user.check_password(password):
-        return jsonify({"error": "Invalid email or password"}), 401
+    try:
+        if not user.check_password(password):
+            return jsonify({"error": "Invalid email/username or password"}), 401
+    except Exception as e:
+        print(f"Password check error: {str(e)}")
+        return jsonify({"error": "Authentication error"}), 500
     
     return jsonify({
         "message": "Login successful",
         "user": user.to_dict(),
-        "token": "demo_token_123"
+        "token": "demo_token_123"  # Replace with JWT later
     }), 200
     
 @app.route('/auth/register', methods=['POST', 'OPTIONS'])
