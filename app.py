@@ -33,7 +33,7 @@ with app.app_context():
 
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def welcome():
@@ -217,51 +217,80 @@ class PostResource(Resource):
         return [post.to_dict() for post in posts], 200
 
     def post(self):
-        data = request.get_json()
-        title = data.get('title')
-        content = data.get('content')
-        user_id = data.get('user_id')
-        category_id = data.get('category_id')
-        featured_image = data.get('featured_image')
-        tag_ids = data.get('tag_ids', [])
-        excerpt = data.get('excerpt', '')
+        try:
+            data = request.get_json()
+            print("Received post data:", data)  # Debug logging
 
-        if not title or not content or not user_id:
-            return {"error": "Missing required fields"}, 400
+            title = data.get('title')
+            content = data.get('content')
+            excerpt = data.get('excerpt')
+            user_id = data.get('user_id')
+            category_id = data.get('category_id')
+            featured_image = data.get('featured_image')
+            tag_ids = data.get('tag_ids')
 
-        # Validate user exists
-        user = User.query.get(user_id)
-        if not user:
-            return {"error": "User not found"}, 404
+            # ===== Required field checks =====
+            if not title:
+                return {"error": "Title is required"}, 400
+            if not content:
+                return {"error": "Content is required"}, 400
+            if not excerpt:
+                return {"error": "Excerpt is required"}, 400
+            if not user_id:
+                return {"error": "User ID is required"}, 400
+            if not category_id:
+                return {"error": "Category ID is required"}, 400
+            if not tag_ids or not isinstance(tag_ids, list) or len(tag_ids) == 0:
+                return {"error": "At least one tag is required"}, 400
 
-        # Validate category exists if provided
-        if category_id:
-            category = Category.query.get(category_id)
-            if not category:
-                return {"error": "Category not found"}, 404
+            # ===== Validate user exists =====
+            user = User.query.get(user_id)
+            if not user:
+                return {"error": f"User with ID {user_id} not found"}, 404
 
-        # Validate tags exist if provided
-        if tag_ids:
-            existing_tags = Tag.query.filter(Tag.id.in_(tag_ids)).all()
-            if len(existing_tags) != len(tag_ids):
-                return {"error": "One or more tags not found"}, 404
+            # ===== Validate category exists =====
+            try:
+                category_id = int(category_id)
+                category = Category.query.get(category_id)
+                if not category:
+                    return {"error": f"Category with ID {category_id} not found"}, 404
+            except (ValueError, TypeError):
+                return {"error": "Invalid category ID format"}, 400
 
-        new_post = Post(
-            title=title,
-            content=content,
-            excerpt=excerpt,
-            user_id=user_id,
-            category_id=category_id,
-            featured_image=featured_image
-        )
+            # ===== Validate tags exist =====
+            try:
+                tag_ids = [int(tag_id) for tag_id in tag_ids]
+                existing_tags = Tag.query.filter(Tag.id.in_(tag_ids)).all()
+                if len(existing_tags) != len(tag_ids):
+                    return {"error": "One or more tags not found"}, 404
+            except (ValueError, TypeError):
+                return {"error": "Invalid tag IDs format"}, 400
 
-        if tag_ids:
+            # ===== Create the post =====
+            new_post = Post(
+                title=title,
+                content=content,
+                excerpt=excerpt,
+                user_id=user_id,
+                category_id=category_id,
+                featured_image=featured_image
+            )
+
+            # Attach tags
             tags = Tag.query.filter(Tag.id.in_(tag_ids)).all()
             new_post.tags.extend(tags)
 
-        db.session.add(new_post)
-        db.session.commit()
-        return new_post.to_dict(), 201
+            db.session.add(new_post)
+            db.session.commit()
+
+            return new_post.to_dict(), 201
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating post: {str(e)}")
+            import traceback; traceback.print_exc()
+            return {"error": "Internal server error", "details": str(e)}, 500
+
 
     def patch(self, post_id):
         post = Post.query.get_or_404(post_id)
