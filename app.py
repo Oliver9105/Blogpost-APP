@@ -26,9 +26,14 @@ migrate = Migrate(app, db)
 api = Api(app)
 CORS(app)
 
+# Ensure upload directory exists at startup
+with app.app_context():
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    print(f"Upload directory ensured: {app.config['UPLOAD_FOLDER']}")
+
 def allowed_file(filename):
     return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def welcome():
@@ -106,27 +111,38 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     
     if file and allowed_file(file.filename):
-        # Generate unique filename
-        filename = secure_filename(file.filename)
-        unique_filename = f"{uuid.uuid4().hex}_{filename}"
-        
-        # Create upload directory if it doesn't exist
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        
-        # Save file
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(file_path)
-        
-        # Return URL
-        image_url = f"/static/uploads/{unique_filename}"
-        return jsonify({'url': image_url}), 200
+        try:
+            # Generate unique filename
+            filename = secure_filename(file.filename)
+            unique_filename = f"{uuid.uuid4().hex}_{filename}"
+            
+            # Create upload directory if it doesn't exist
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            
+            # Save file
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            file.save(file_path)
+            
+            # Return URL
+            image_url = f"/static/uploads/{unique_filename}"
+            return jsonify({
+                'url': image_url,
+                'message': 'File uploaded successfully'
+            }), 200
+            
+        except Exception as e:
+            print(f"Error uploading file: {str(e)}")
+            return jsonify({'error': 'Failed to upload file'}), 500
     
-    return jsonify({'error': 'Invalid file type'}), 400
+    return jsonify({'error': 'Invalid file type. Allowed types: PNG, JPG, JPEG, GIF, WEBP'}), 400
 
 # Serve uploaded files
 @app.route('/static/uploads/<filename>')
 def serve_uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    try:
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    except FileNotFoundError:
+        return jsonify({'error': 'File not found'}), 404
 
 # Keep the old upload endpoint for backward compatibility
 @app.route('/upload', methods=['POST'])
@@ -213,13 +229,30 @@ class PostResource(Resource):
         if not title or not content or not user_id:
             return {"error": "Missing required fields"}, 400
 
+        # Validate user exists
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+
+        # Validate category exists if provided
+        if category_id:
+            category = Category.query.get(category_id)
+            if not category:
+                return {"error": "Category not found"}, 404
+
+        # Validate tags exist if provided
+        if tag_ids:
+            existing_tags = Tag.query.filter(Tag.id.in_(tag_ids)).all()
+            if len(existing_tags) != len(tag_ids):
+                return {"error": "One or more tags not found"}, 404
+
         new_post = Post(
             title=title,
             content=content,
             excerpt=excerpt,
             user_id=user_id,
             category_id=category_id,
-            featured_image=featured_image  # This should now be a URL from the upload endpoint
+            featured_image=featured_image
         )
 
         if tag_ids:
@@ -326,4 +359,7 @@ api.add_resource(CategoryResource, '/categories', '/categories/<int:category_id>
 api.add_resource(TagResource, '/tags', '/tags/<int:tag_id>')
 
 if __name__ == '__main__':
+    # Ensure upload directory exists before running
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    print(f"Server starting with upload directory: {app.config['UPLOAD_FOLDER']}")
     app.run(debug=True, port=5555)
