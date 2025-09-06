@@ -1,23 +1,34 @@
 import os
-from flask import Flask, request, jsonify
+import uuid
+from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_restful import Api, Resource
 from sqlalchemy.orm import joinedload
 from models import db, User, Post, Comment, Category, Tag
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI',)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
 app.json.compact = False
+
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 db.init_app(app)
 migrate = Migrate(app, db)
 api = Api(app)
 CORS(app)
+
+def allowed_file(filename):
+    return '.' in filename and \
+        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def welcome():
@@ -75,7 +86,7 @@ def register():
         return jsonify({"error": "Email already registered"}), 409
     
     new_user = User(username=username, email=email)
-    new_user.set_password(password)  # Assuming you have a set_password method
+    new_user.set_password(password)
     db.session.add(new_user)
     db.session.commit()
     
@@ -83,8 +94,60 @@ def register():
         "message": "User created successfully",
         "user": new_user.to_dict()
     }), 201
+
+# New file upload endpoint
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
     
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
     
+    if file and allowed_file(file.filename):
+        # Generate unique filename
+        filename = secure_filename(file.filename)
+        unique_filename = f"{uuid.uuid4().hex}_{filename}"
+        
+        # Create upload directory if it doesn't exist
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        
+        # Save file
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        file.save(file_path)
+        
+        # Return URL
+        image_url = f"/static/uploads/{unique_filename}"
+        return jsonify({'url': image_url}), 200
+    
+    return jsonify({'error': 'Invalid file type'}), 400
+
+# Serve uploaded files
+@app.route('/static/uploads/<filename>')
+def serve_uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# Keep the old upload endpoint for backward compatibility
+@app.route('/upload', methods=['POST'])
+def upload_image():
+    image = request.files.get('image')
+    if not image:
+        return {"error": "No image provided"}, 400  
+    
+    if not allowed_file(image.filename):
+        return {"error": "Invalid file type"}, 400
+        
+    filename = secure_filename(image.filename)
+    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+    upload_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    
+    # Create directory if it doesn't exist
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    image.save(upload_path)
+    
+    return {"url": f"/static/uploads/{unique_filename}"}, 201
+
 class UserResource(Resource):
     def get(self, user_id=None):
         if user_id:
@@ -145,6 +208,7 @@ class PostResource(Resource):
         category_id = data.get('category_id')
         featured_image = data.get('featured_image')
         tag_ids = data.get('tag_ids', [])
+        excerpt = data.get('excerpt', '')
 
         if not title or not content or not user_id:
             return {"error": "Missing required fields"}, 400
@@ -152,9 +216,10 @@ class PostResource(Resource):
         new_post = Post(
             title=title,
             content=content,
+            excerpt=excerpt,
             user_id=user_id,
             category_id=category_id,
-            featured_image=featured_image
+            featured_image=featured_image  # This should now be a URL from the upload endpoint
         )
 
         if tag_ids:
