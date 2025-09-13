@@ -164,6 +164,24 @@ def upload_image():
     
     return {"url": f"/static/uploads/{unique_filename}"}, 201
 
+# my-posts endpoint
+@app.route('/posts/my-posts', methods=['GET', 'OPTIONS'])
+def get_my_posts():
+    if request.method == 'OPTIONS':
+        return '', 200  # Handle preflight request
+
+    user_id = request.args.get('user_id')  # frontend should pass ?user_id=...
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+
+    try:
+        posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
+        return jsonify([post.to_dict() for post in posts]), 200
+    except Exception as e:
+        print(f"Error fetching my posts: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
 class UserResource(Resource):
     def get(self, user_id=None):
         if user_id:
