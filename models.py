@@ -95,10 +95,11 @@ class Post(db.Model):
     excerpt = db.Column(db.String(500))
     content = db.Column(db.Text, nullable=False)
     featured_image = db.Column(db.String, nullable=True)
-    published = db.Column(db.Boolean, default=False, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
+    published = db.Column(db.Boolean, default=False)   
+
 
     user = db.relationship('User', back_populates='posts')
     category = db.relationship('Category', back_populates='posts')
