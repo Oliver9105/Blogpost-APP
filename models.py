@@ -98,7 +98,7 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
-    published = db.Column(db.Boolean, default=False)   
+    published = db.Column(db.Boolean, nullable=False, default=False)  
 
 
     user = db.relationship('User', back_populates='posts')
@@ -106,6 +106,8 @@ class Post(db.Model):
     tags = db.relationship('Tag', secondary=post_tags, back_populates='posts')
     comments = db.relationship('Comment', back_populates='post', cascade='all, delete-orphan')
 
+    
+        
     def to_dict(self):
         return {
             "id": self.id,
@@ -113,12 +115,15 @@ class Post(db.Model):
             "content": self.content,
             "excerpt": self.excerpt,
             "featured_image": self.featured_image,
-            "published": self.published, 
-            "created_at": self.created_at.isoformat(),
-            "author": self.user.to_dict() if self.user else None,
-            "category": self.category.to_dict() if self.category else None,
-            "tags": [tag.to_dict() for tag in self.tags]
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if hasattr(self, 'updated_at') and self.updated_at else None,
+            "published": self.published,   # ✅ include published
+            "user_id": self.user_id,
+            "category_id": self.category_id,
+            "tags": [tag.to_dict() for tag in self.tags] if self.tags else []
         }
+
+
 
     def __repr__(self):
         return f"<Post {self.id} - {self.title}>"

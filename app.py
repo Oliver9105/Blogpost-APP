@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI', 'sqlite:///blogpost.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
@@ -246,6 +246,7 @@ class PostResource(Resource):
             category_id = data.get('category_id')
             featured_image = data.get('featured_image')
             tag_ids = data.get('tag_ids')
+            published = data.get('published', False)  # ✅ default draft
 
             # ===== Required field checks =====
             if not title:
@@ -291,7 +292,8 @@ class PostResource(Resource):
                 excerpt=excerpt,
                 user_id=user_id,
                 category_id=category_id,
-                featured_image=featured_image
+                featured_image=featured_image,
+                published=published  # ✅ include published flag
             )
 
             # Attach tags
@@ -309,7 +311,6 @@ class PostResource(Resource):
             import traceback; traceback.print_exc()
             return {"error": "Internal server error", "details": str(e)}, 500
 
-
     def patch(self, post_id):
         post = Post.query.get_or_404(post_id)
         data = request.get_json()
@@ -326,6 +327,8 @@ class PostResource(Resource):
             post.featured_image = data['featured_image']
         if 'tag_ids' in data:
             post.tags = Tag.query.filter(Tag.id.in_(data['tag_ids'])).all()
+        if 'published' in data:
+            post.published = bool(data['published'])  # ✅ allow toggling draft/published
 
         db.session.commit()
         return post.to_dict(), 200
@@ -335,6 +338,7 @@ class PostResource(Resource):
         db.session.delete(post)
         db.session.commit()
         return {"message": "Post deleted successfully"}, 200
+
 
 class CommentResource(Resource):
     def get(self, post_id=None):
