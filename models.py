@@ -95,6 +95,7 @@ class Post(db.Model):
     excerpt = db.Column(db.String(500))
     content = db.Column(db.Text, nullable=False)
     featured_image = db.Column(db.String, nullable=True)
+    published = db.Column(db.Boolean, default=False, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
@@ -109,10 +110,11 @@ class Post(db.Model):
             "id": self.id,
             "title": self.title,
             "content": self.content,
+            "excerpt": self.excerpt,
             "featured_image": self.featured_image,
+            "published": self.published, 
             "created_at": self.created_at.isoformat(),
             "author": self.user.to_dict() if self.user else None,
-
             "category": self.category.to_dict() if self.category else None,
             "tags": [tag.to_dict() for tag in self.tags]
         }
