@@ -81,7 +81,8 @@ class Tag(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "name": self.name
+            "name": self.name,
+            "category_id": self.category_id,
         }
 
     def __repr__(self):
@@ -112,16 +113,18 @@ class Post(db.Model):
         return {
             "id": self.id,
             "title": self.title,
-            "content": self.content,
             "excerpt": self.excerpt,
+            "content": self.content,
             "featured_image": self.featured_image,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if hasattr(self, 'updated_at') and self.updated_at else None,
-            "published": self.published,   # ✅ include published
-            "user_id": self.user_id,
-            "category_id": self.category_id,
-            "tags": [tag.to_dict() for tag in self.tags] if self.tags else []
+            "published": self.published,
+            "owner": self.user.to_dict() if self.user else None,  
+            "category": self.category.to_dict() if self.category else None,  
+            "tags": [tag.to_dict() for tag in self.tags] if self.tags else [],
+            "comments": [comment.to_dict() for comment in self.comments] if self.comments else []
         }
+
 
 
 

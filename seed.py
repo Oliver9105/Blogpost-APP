@@ -25,7 +25,7 @@ categories_data = {
     ]
 }
 
-# --- Sentences per category for realistic content ---
+# --- Predefined sentences for realistic content ---
 category_sentences = {
     "Technology": [
         "React is a powerful JavaScript library for building user interfaces.",
@@ -126,7 +126,14 @@ with app.app_context():
                 unique=True
             )
             paragraphs.append(" ".join(sentences))
-        content_paragraph = "\n\n".join(paragraphs)
+
+        # Add headings to some paragraphs for realism
+        content_paragraph = "\n\n".join(
+            f"### {fake.sentence(nb_words=4)}\n\n{p}" if fake.boolean(50) else p
+            for p in paragraphs
+        )
+
+        # Meaningful excerpt
         excerpt_text = " ".join(content_paragraph.split()[:50]) + "..."
 
         # Reliable featured image

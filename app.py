@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blogpost.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
@@ -181,6 +181,18 @@ def get_my_posts():
         print(f"Error fetching my posts: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
 
+@app.route('/posts/<int:post_id>/related', methods=['GET'])
+def get_related_posts(post_id):
+    post = Post.query.get_or_404(post_id)
+    # Fetch 3 other published posts from same category, excluding the current one
+    related = (
+        Post.query
+        .filter(Post.category_id == post.category_id, Post.id != post.id, Post.published == True)
+        .limit(3)
+        .all()
+    )
+    return jsonify([p.to_dict() for p in related]), 200
+
 
 class UserResource(Resource):
     def get(self, user_id=None):
@@ -246,7 +258,7 @@ class PostResource(Resource):
             category_id = data.get('category_id')
             featured_image = data.get('featured_image')
             tag_ids = data.get('tag_ids')
-            published = data.get('published', False)  # ✅ default draft
+            published = data.get('published', True)  # ✅ default draft
 
             # ===== Required field checks =====
             if not title:
@@ -311,6 +323,55 @@ class PostResource(Resource):
             import traceback; traceback.print_exc()
             return {"error": "Internal server error", "details": str(e)}, 500
 
+    def put(self, post_id):
+        # Full replace (PUT) - require required fields similar to creation
+        post = Post.query.get_or_404(post_id)
+        data = request.get_json() or {}
+
+        # Required for full replace
+        required = ['title', 'content', 'excerpt', 'user_id', 'category_id', 'tag_ids']
+        for field in required:
+            if field not in data:
+                return {"error": f"{field} is required for PUT"}, 400
+
+        # Validate user
+        user = User.query.get(data['user_id'])
+        if not user:
+            return {"error": f"User with ID {data['user_id']} not found"}, 404
+
+        # Validate category
+        try:
+            category_id = int(data['category_id'])
+            category = Category.query.get(category_id)
+            if not category:
+                return {"error": f"Category with ID {category_id} not found"}, 404
+        except (ValueError, TypeError):
+            return {"error": "Invalid category ID format"}, 400
+
+        # Validate tags
+        try:
+            tag_ids = [int(t) for t in data['tag_ids']]
+            existing_tags = Tag.query.filter(Tag.id.in_(tag_ids)).all()
+            if len(existing_tags) != len(tag_ids):
+                return {"error": "One or more tags not found"}, 404
+        except (ValueError, TypeError):
+            return {"error": "Invalid tag IDs format"}, 400
+
+        # Apply replacement
+        post.title = data['title']
+        post.content = data['content']
+        post.excerpt = data['excerpt']
+        post.user_id = data['user_id']
+        post.category_id = category_id
+        post.featured_image = data.get('featured_image')
+        post.published = bool(data.get('published', False))
+
+        # Replace tags
+        post.tags = Tag.query.filter(Tag.id.in_(tag_ids)).all()
+
+        db.session.commit()
+        return post.to_dict(), 200
+
     def patch(self, post_id):
         post = Post.query.get_or_404(post_id)
         data = request.get_json()
@@ -341,18 +402,15 @@ class PostResource(Resource):
 
 
 class CommentResource(Resource):
-    def get(self, post_id=None):
-        if post_id:
-            post = Post.query.get_or_404(post_id)
-            comments = Comment.query.filter_by(post_id=post.id).all()
-            return [comment.to_dict() for comment in comments], 200
-        comments = Comment.query.all()
-        return [comment.to_dict() for comment in comments], 200
+    def get(self, post_id):
+        comments = Comment.query.filter_by(post_id=post_id).all()
+        return [c.to_dict() for c in comments], 200
 
     def post(self, post_id):
         data = request.get_json()
         content = data.get('content')
-        user_id = data.get('user_id')
+        # accept either user_id or author_id
+        user_id = data.get('user_id') or data.get('author_id')
 
         if not content or not user_id:
             return {"error": "Missing required fields"}, 400
@@ -361,6 +419,7 @@ class CommentResource(Resource):
         db.session.add(new_comment)
         db.session.commit()
         return new_comment.to_dict(), 201
+
 
 class CategoryResource(Resource):
     def get(self, category_id=None):
@@ -405,7 +464,7 @@ class TagResource(Resource):
 
 api.add_resource(UserResource, '/users', '/users/<int:user_id>')
 api.add_resource(PostResource, '/posts', '/posts/<int:post_id>')
-api.add_resource(CommentResource, '/comments', '/posts/<int:post_id>/comments')
+api.add_resource(CommentResource, '/posts/<int:post_id>/comments')
 api.add_resource(CategoryResource, '/categories', '/categories/<int:category_id>')
 api.add_resource(TagResource, '/tags', '/tags/<int:tag_id>')
 
