@@ -468,21 +468,15 @@ class ReplyResource(Resource):
         data = request.get_json()
         content = data.get('content')
         user_id = data.get('user_id')
-        comment_id = data.get('comment_id')
+        comment_id = data.get('comment_id')  
 
         if not all([content, user_id, comment_id]):
             return {"error": "Missing required fields"}, 400
 
-        # Infer post_id from the comment
-        comment = Comment.query.get(comment_id)
-        if not comment:
-            return {"error": "Comment not found"}, 404
-
         new_reply = Reply(
             content=content,
             user_id=user_id,
-            comment_id=comment_id,
-            post_id=comment.post_id 
+            comment_id=comment_id
         )
         db.session.add(new_reply)
         db.session.commit()

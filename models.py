@@ -22,8 +22,10 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
+    # Relationships
     posts = db.relationship('Post', back_populates='user', cascade='all, delete-orphan')
     comments = db.relationship('Comment', back_populates='user', cascade='all, delete-orphan')
+    replies = db.relationship('Reply', back_populates='user', cascade='all, delete-orphan')
 
     @validates('email')
     def validate_email(self, key, email):
@@ -99,16 +101,13 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
-    published = db.Column(db.Boolean, nullable=False, default=False)  
-
+    published = db.Column(db.Boolean, nullable=False, default=False)
 
     user = db.relationship('User', back_populates='posts')
     category = db.relationship('Category', back_populates='posts')
     tags = db.relationship('Tag', secondary=post_tags, back_populates='posts')
     comments = db.relationship('Comment', back_populates='post', cascade='all, delete-orphan')
 
-    
-        
     def to_dict(self):
         return {
             "id": self.id,
@@ -117,16 +116,12 @@ class Post(db.Model):
             "content": self.content,
             "featured_image": self.featured_image,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if hasattr(self, 'updated_at') and self.updated_at else None,
             "published": self.published,
             "owner": self.user.to_dict() if self.user else None,  
             "category": self.category.to_dict() if self.category else None,  
             "tags": [tag.to_dict() for tag in self.tags] if self.tags else [],
             "comments": [comment.to_dict() for comment in self.comments] if self.comments else []
         }
-
-
-
 
     def __repr__(self):
         return f"<Post {self.id} - {self.title}>"
@@ -139,17 +134,18 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
-    
 
     user = db.relationship('User', back_populates='comments')
     post = db.relationship('Post', back_populates='comments')
+    replies = db.relationship('Reply', back_populates='comment', cascade='all, delete-orphan')  # Add this
 
     def to_dict(self):
         return {
             "id": self.id,
             "content": self.content,
             "created_at": self.created_at.isoformat(),
-            "author": self.user.to_dict() if self.user else None
+            "author": self.user.to_dict() if self.user else None,
+            "post_id": self.post_id
         }
 
     def __repr__(self):
@@ -161,13 +157,11 @@ class Reply(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=True)  
-    comment_id = db.Column(db.Integer, db.ForeignKey('comments.id'), nullable=False)
+    comment_id = db.Column(db.Integer, db.ForeignKey('comments.id'), nullable=False)  # Only need comment_id
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
-    user = db.relationship('User', backref='replies')
-    post = db.relationship('Post', backref='replies')
-    comment = db.relationship('Comment', backref='replies')
+    user = db.relationship('User', back_populates='replies')
+    comment = db.relationship('Comment', back_populates='replies')  # Use back_populates for consistency
 
     def to_dict(self):
         return {
@@ -175,8 +169,7 @@ class Reply(db.Model):
             "content": self.content,
             "created_at": self.created_at.isoformat(),
             "author": self.user.to_dict() if self.user else None,
-            "comment_id": self.comment_id,
-            "post_id": self.post_id
+            "comment_id": self.comment_id
         }
 
     def __repr__(self):
