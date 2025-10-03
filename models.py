@@ -161,13 +161,13 @@ class Reply(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
-    comment_id = db.Column(db.Integer, db.ForeignKey('comments.id'), nullable=False)  # Add this line
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=True)  
+    comment_id = db.Column(db.Integer, db.ForeignKey('comments.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
     user = db.relationship('User', backref='replies')
     post = db.relationship('Post', backref='replies')
-    comment = db.relationship('Comment', backref='replies')  # Add this relationship
+    comment = db.relationship('Comment', backref='replies')
 
     def to_dict(self):
         return {
@@ -175,7 +175,7 @@ class Reply(db.Model):
             "content": self.content,
             "created_at": self.created_at.isoformat(),
             "author": self.user.to_dict() if self.user else None,
-            "comment_id": self.comment_id,  # Include comment_id in response
+            "comment_id": self.comment_id,
             "post_id": self.post_id
         }
 

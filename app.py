@@ -464,46 +464,30 @@ class TagResource(Resource):
         
     
 class ReplyResource(Resource):
-    def get(self, reply_id=None):
-        if reply_id:
-            reply = Reply.query.get_or_404(reply_id)
-            return reply.to_dict(), 200
-        
-        # Get all replies (optionally filter by post_id or comment_id)
-        post_id = request.args.get('post_id')
-        comment_id = request.args.get('comment_id')
-        
-        query = Reply.query
-        
-        if post_id:
-            query = query.filter_by(post_id=post_id)
-        if comment_id:
-            query = query.filter_by(comment_id=comment_id)
-            
-        replies = query.all()
-        return [r.to_dict() for r in replies], 200
-
     def post(self):
         data = request.get_json()
         content = data.get('content')
         user_id = data.get('user_id')
-        post_id = data.get('post_id')
         comment_id = data.get('comment_id')
 
-        if not all([content, user_id, post_id, comment_id]):
+        if not all([content, user_id, comment_id]):
             return {"error": "Missing required fields"}, 400
+
+        # Infer post_id from the comment
+        comment = Comment.query.get(comment_id)
+        if not comment:
+            return {"error": "Comment not found"}, 404
 
         new_reply = Reply(
             content=content,
             user_id=user_id,
-            post_id=post_id,
-            comment_id=comment_id
+            comment_id=comment_id,
+            post_id=comment.post_id 
         )
         db.session.add(new_reply)
         db.session.commit()
         return new_reply.to_dict(), 201
 
-# Remove the function-based reply routes and use this instead
 api.add_resource(ReplyResource, '/replies', '/replies/<int:reply_id>')
 
 api.add_resource(UserResource, '/users', '/users/<int:user_id>')
