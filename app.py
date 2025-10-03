@@ -488,11 +488,14 @@ class ReplyResource(Resource):
         db.session.commit()
         return new_reply.to_dict(), 201
 
-api.add_resource(ReplyResource, '/replies', '/replies/<int:reply_id>')
+
+
+
 
 api.add_resource(UserResource, '/users', '/users/<int:user_id>')
 api.add_resource(PostResource, '/posts', '/posts/<int:post_id>')
 api.add_resource(CommentResource, '/posts/<int:post_id>/comments')
+api.add_resource(ReplyResource, '/replies', '/replies/<int:reply_id>')
 api.add_resource(CategoryResource, '/categories', '/categories/<int:category_id>')
 api.add_resource(TagResource, '/tags', '/tags/<int:tag_id>')
 
