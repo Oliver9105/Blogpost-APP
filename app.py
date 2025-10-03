@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blogpost.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
