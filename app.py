@@ -464,11 +464,22 @@ class TagResource(Resource):
         
     
 class ReplyResource(Resource):
+    def get(self):
+        """Fetch all replies for a given comment_id."""
+        comment_id = request.args.get('comment_id')
+
+        if not comment_id:
+            return {"error": "comment_id is required"}, 400
+
+        replies = Reply.query.filter_by(comment_id=comment_id).all()
+        return [reply.to_dict() for reply in replies], 200
+
     def post(self):
+        """Create a new reply for a comment."""
         data = request.get_json()
         content = data.get('content')
         user_id = data.get('user_id')
-        comment_id = data.get('comment_id')  
+        comment_id = data.get('comment_id')
 
         if not all([content, user_id, comment_id]):
             return {"error": "Missing required fields"}, 400
@@ -486,12 +497,14 @@ class ReplyResource(Resource):
 
 
 
+
 api.add_resource(UserResource, '/users', '/users/<int:user_id>')
 api.add_resource(PostResource, '/posts', '/posts/<int:post_id>')
 api.add_resource(CommentResource, '/posts/<int:post_id>/comments')
 api.add_resource(ReplyResource, '/replies', '/replies/<int:reply_id>')
 api.add_resource(CategoryResource, '/categories', '/categories/<int:category_id>')
 api.add_resource(TagResource, '/tags', '/tags/<int:tag_id>')
+
 
 if __name__ == '__main__':
     # Ensure upload directory exists before running
