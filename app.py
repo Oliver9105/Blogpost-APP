@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blogpost.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB limit
@@ -46,8 +46,11 @@ def login():
         return '', 200
     
     data = request.get_json()
+    print("LOGIN DATA:", data)
     login_identifier = data.get('identifier')  # Unified field name
+    print("IDENTIFIER:", login_identifier)
     password = data.get('password')
+    print("PASSWORD:", password)
     
     if not login_identifier or not password:
         return jsonify({"error": "Email/username and password required"}), 400
